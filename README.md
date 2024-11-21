@@ -26,12 +26,10 @@ R"(
 )";
 
 int main() {
-    tinyxml2::XMLDocument doc;
-    doc.Parse(bmapfile);
-
-    const auto rootElem = doc.RootElement();
-
-    const auto bmapFile = bmap::BmapFile::parse(rootElem);
+    const std::string fileAsString{bmapfile};
+    const std::vector<char> content{fileAsString.begin(), fileAsString.end()};
+    
+    const auto bmapFile = bmap::BmapFile::from_xml_data(content);
 
     std::cout << "Parse ok!" << std::endl;
     bmapFile.print();
