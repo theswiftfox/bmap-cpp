@@ -31,9 +31,13 @@
 #include <tinyxml2.h>
 #include <unistd.h>
 
+#ifdef USE_GCC_COMPAT
 // compatibility for std::format if GCC < 13.
 // IWYU pragma is there because it doesn't recognize the format function
 #include "format_gcc12_compat.h" // IWYU pragma: keep
+#else
+#include <format>
+#endif
 
 constexpr const size_t MAX_BUF_SIZE = 4 * 1024 * 1024 * 2;
 
@@ -220,8 +224,12 @@ struct BmapFile {
 };
 
 struct Progress {
-    const size_t imageSize;
+    const size_t mappedBlocks;
     size_t blocksWritten;
+
+    uint8_t percent() const {
+        return uint8_t(100.0f / (float)mappedBlocks * (float)blocksWritten);
+    }
 };
 
 typedef std::function<void(const Progress &)> ProgressCallback;
@@ -263,7 +271,7 @@ inline void copy(const std::string &wicPath, const std::string &targetDisk,
     std::cout << "Image Size: " << bmapFile.imageSize << " Blocks" << std::endl;
 #endif
 
-    auto progress = Progress{bmapFile.imageSize, 0};
+    auto progress = Progress{bmapFile.mappedBlocksCount, 0};
 
     std::ifstream wicFile(wicfilepath, std::ios::in | std::ios::binary);
 
@@ -309,6 +317,7 @@ inline void copy(const std::string &wicPath, const std::string &targetDisk,
         fsync(blockFd);
 #ifdef BMAP_COPY_DEBUG_PRINT
         std::cout << "Blocks written: " << progress.blocksWritten
+                  << " (" << progress.percent() << "%)"
                   << " Remaining: "
                   << bmapFile.mappedBlocksCount - progress.blocksWritten
                   << std::endl;
